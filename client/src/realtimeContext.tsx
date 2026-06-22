@@ -38,6 +38,13 @@ interface RealtimeCtx {
   startSolo: () => Promise<void>;
   stopSolo: () => void;
   clearNotice: () => void;
+  stats: SessionStats;
+}
+
+export interface SessionStats {
+  micOn: boolean;
+  sent: number; // mic audio chunks sent
+  recv: number; // translated audio chunks received
 }
 
 const Ctx = createContext<RealtimeCtx | null>(null);
@@ -52,6 +59,11 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   const [call, setCall] = useState<CallState>({ kind: 'idle' });
   const [soloActive, setSoloActive] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+
+  // lightweight diagnostics
+  const sentRef = useRef(0);
+  const recvRef = useRef(0);
+  const [stats, setStats] = useState<SessionStats>({ micOn: false, sent: 0, recv: 0 });
 
   // transcript buffers
   const srcLines = useRef<string[]>([]);
@@ -98,8 +110,25 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       audioRef.current = engine;
     }
     if (audioRef.current.started) return;
-    await audioRef.current.start((pcm) => clientRef.current?.sendAudio(pcm));
+    await audioRef.current.start((pcm) => {
+      sentRef.current += 1;
+      clientRef.current?.sendAudio(pcm);
+    });
   }, []);
+
+  // Flush diagnostic counters to state a few times per second while active.
+  useEffect(() => {
+    const active = soloActive || call.kind === 'active';
+    if (!active) return;
+    const id = setInterval(() => {
+      setStats({
+        micOn: audioRef.current?.started ?? false,
+        sent: sentRef.current,
+        recv: recvRef.current,
+      });
+    }, 300);
+    return () => clearInterval(id);
+  }, [soloActive, call.kind]);
 
   // Establish the websocket once we have an authenticated user.
   useEffect(() => {
@@ -110,7 +139,10 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     clientRef.current = client;
 
     client.onStatus = setStatus;
-    client.onAudio = (pcm) => audioRef.current?.playPcm(pcm);
+    client.onAudio = (pcm) => {
+      recvRef.current += 1;
+      audioRef.current?.playPcm(pcm);
+    };
     client.onMessage = (msg: ServerMessage) => {
       switch (msg.t) {
         case 'ready':
@@ -216,8 +248,17 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   const startSolo = useCallback(async () => {
     primeAudio(); // unlock audio synchronously within the tap (iOS)
     resetTranscripts();
+    sentRef.current = 0;
+    recvRef.current = 0;
+    setStats({ micOn: false, sent: 0, recv: 0 });
     setSoloActive(true);
-    await startAudioCapture();
+    try {
+      await startAudioCapture();
+    } catch (err) {
+      setSoloActive(false);
+      setNotice('mic: ' + ((err as Error).message || 'không truy cập được micro'));
+      return;
+    }
     clientRef.current?.send({ t: 'translate.start', mode: 'solo' });
   }, [resetTranscripts, startAudioCapture, primeAudio]);
 
@@ -243,6 +284,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         startSolo,
         stopSolo,
         clearNotice: () => setNotice(null),
+        stats,
       }}
     >
       {children}

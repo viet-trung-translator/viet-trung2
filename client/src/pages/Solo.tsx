@@ -7,7 +7,8 @@ import TopBar from '../components/TopBar';
 export default function Solo() {
   const { t } = useAuth();
   const navigate = useNavigate();
-  const { soloActive, startSolo, stopSolo, transcripts, notice, clearNotice } = useRealtime();
+  const { soloActive, startSolo, stopSolo, transcripts, notice, clearNotice, status, stats } =
+    useRealtime();
 
   // Stop the session when leaving this screen.
   useEffect(() => {
@@ -45,6 +46,17 @@ export default function Solo() {
         </button>
         <p className="hint">{soloActive ? t('tapToStop') : t('tapToStart')}</p>
         <p className="hint">{t('soloHint')}</p>
+
+        {soloActive && (
+          <div
+            className="card"
+            style={{ fontSize: 13, lineHeight: 1.6, margin: '0 auto 8px', maxWidth: 320 }}
+          >
+            <div>Kết nối (WS): <b>{status === 'open' ? '✅ đã nối' : '❌ ' + status}</b></div>
+            <div>Micro: <b>{stats.micOn ? '✅ đang thu' : '⏳ chưa'}</b></div>
+            <div>Đã gửi tiếng: <b>{stats.sent}</b> · Nhận bản dịch: <b>{stats.recv}</b></div>
+          </div>
+        )}
 
         <div className="transcripts">
           <div className="bubble">
