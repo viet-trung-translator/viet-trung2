@@ -1,6 +1,24 @@
 import dotenv from 'dotenv';
+import { readFileSync, existsSync } from 'node:fs';
 
 dotenv.config();
+
+/**
+ * Load the optional company terminology glossary from glossary.txt at the
+ * project root. Lines starting with '#' or blank lines are ignored.
+ */
+function loadGlossary(): string {
+  try {
+    if (!existsSync('glossary.txt')) return '';
+    return readFileSync('glossary.txt', 'utf8')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith('#'))
+      .join('\n');
+  } catch {
+    return '';
+  }
+}
 
 function required(name: string, fallback?: string): string {
   const v = process.env[name] ?? fallback;
@@ -24,6 +42,8 @@ export const config = {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),
+  // Company/factory/office terminology, injected into the translation prompt.
+  glossary: loadGlossary(),
 };
 
 export type AppConfig = typeof config;

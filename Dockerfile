@@ -22,6 +22,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/client/dist ./client/dist
 COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/glossary.txt ./glossary.txt
 
 EXPOSE 8080
 CMD ["node", "dist/server/index.js"]

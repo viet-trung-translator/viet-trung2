@@ -39,19 +39,33 @@ const STRICT_RULES = [
   'no commentary, no extra words. Preserve the speaker’s tone and keep it natural.',
 ].join(' ');
 
-function buildSystemInstruction(opts: SessionOptions): string {
-  if (opts.source === 'auto' || opts.target === 'auto') {
-    return [
-      'You translate spoken language between Vietnamese and Chinese (Mandarin).',
-      'Detect the language of each utterance: if it is Vietnamese, output its Chinese',
-      'translation; if it is Chinese, output its Vietnamese translation.',
-      STRICT_RULES,
-    ].join(' ');
-  }
+const DOMAIN_CONTEXT = [
+  'Context: the conversation happens in a factory / manufacturing / office / business',
+  'setting (e.g. a Chinese manager speaking with Vietnamese workers). Prefer accurate,',
+  'standard terminology for manufacturing, production lines, quality control, logistics,',
+  'HR, and workplace/business topics. Translate numbers, quantities, prices, dates, and',
+  'product/part codes exactly and carefully.',
+].join(' ');
+
+function glossaryBlock(): string {
+  if (!config.glossary) return '';
   return [
-    `You translate ${LANG_NAME[opts.source]} speech into ${LANG_NAME[opts.target]}.`,
-    STRICT_RULES,
+    'ALWAYS use these preferred company translations for the listed terms exactly and',
+    'consistently (format "Vietnamese = Chinese"):\n' + config.glossary,
   ].join(' ');
+}
+
+function buildSystemInstruction(opts: SessionOptions): string {
+  const core =
+    opts.source === 'auto' || opts.target === 'auto'
+      ? [
+          'You translate spoken language between Vietnamese and Chinese (Mandarin).',
+          'Detect the language of each utterance: if it is Vietnamese, output its Chinese',
+          'translation; if it is Chinese, output its Vietnamese translation.',
+        ].join(' ')
+      : `You translate ${LANG_NAME[opts.source]} speech into ${LANG_NAME[opts.target]}.`;
+
+  return [core, STRICT_RULES, DOMAIN_CONTEXT, glossaryBlock()].filter(Boolean).join(' ');
 }
 
 const GEMINI_WS_URL =

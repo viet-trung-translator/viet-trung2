@@ -1,0 +1,43 @@
+# ============================================================
+#  TỪ ĐIỂN THUẬT NGỮ RIÊNG — along 翻译
+#  Mỗi dòng một thuật ngữ, định dạng:   tiếng Việt = 中文
+#  - Dòng bắt đầu bằng dấu # là ghi chú, sẽ được bỏ qua.
+#  - Dòng trống cũng được bỏ qua.
+#  - Thêm/sửa thuật ngữ của công ty bạn vào bên dưới rồi lưu lại.
+#  - AI sẽ ưu tiên dịch các từ này đúng và nhất quán.
+# ============================================================
+
+# ----- Công xưởng / sản xuất -----
+tăng ca = 加班
+dây chuyền / chuyền = 生产线
+quản đốc = 车间主任
+tổ trưởng = 组长
+công nhân = 工人
+ca đêm = 夜班
+ca ngày = 白班
+phế phẩm / hàng lỗi = 次品
+kiểm hàng / QC = 质检
+nguyên liệu = 原料
+thành phẩm = 成品
+xuất hàng = 出货
+nhập kho = 入库
+năng suất = 产量
+an toàn lao động = 劳动安全
+bảo trì máy = 设备维护
+
+# ----- Văn phòng / kinh doanh -----
+đơn hàng = 订单
+hợp đồng = 合同
+báo giá = 报价
+khách hàng = 客户
+giao hàng = 交货
+thanh toán = 付款
+hóa đơn = 发票
+
+# ----- Nhân sự -----
+nghỉ phép = 请假
+lương = 工资
+thưởng = 奖金
+chấm công = 考勤
+
+# ----- Thêm thuật ngữ riêng của công ty bạn bên dưới -----
