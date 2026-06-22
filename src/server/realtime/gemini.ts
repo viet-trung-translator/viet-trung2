@@ -102,10 +102,14 @@ class GeminiLiveSession implements TranslationSession {
           // translation plays, to avoid echo.
           realtimeInputConfig: {
             automaticActivityDetection: {
-              startOfSpeechSensitivity: 'START_SENSITIVITY_HIGH',
+              // LOW start sensitivity = only begin a turn on clear speech, not
+              // on background noise (fewer phantom translations). HIGH end
+              // sensitivity + ~0.7s silence = end the turn promptly without
+              // cutting off mid-sentence on short pauses.
+              startOfSpeechSensitivity: 'START_SENSITIVITY_LOW',
               endOfSpeechSensitivity: 'END_SENSITIVITY_HIGH',
-              prefixPaddingMs: 60,
-              silenceDurationMs: 400,
+              prefixPaddingMs: 200,
+              silenceDurationMs: 700,
             },
           },
           inputAudioTranscription: {},

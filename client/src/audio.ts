@@ -1,5 +1,9 @@
 import { AUDIO_INPUT_SAMPLE_RATE, AUDIO_OUTPUT_SAMPLE_RATE } from './types';
 
+// Frames quieter than this (RMS of the Float32 mic signal) are treated as
+// non-speech and sent as silence, to avoid the model hallucinating on noise.
+const SPEECH_RMS_THRESHOLD = 0.015;
+
 /**
  * Handles mic capture (PCM16 mono @16kHz) and playback of translated audio
  * (PCM16 mono @24kHz). Implements half-duplex gating: while translated audio
@@ -74,7 +78,15 @@ export class AudioEngine {
     const handleSamples = (input: Float32Array) => {
       if (!this.onChunk) return;
       if (this.gateWhilePlaying && this.isPlaying) return; // half-duplex
+      // Noise gate: when the frame is quieter than speech (background hum,
+      // machine noise, silence), send clean silence instead of the raw noise.
+      // This stops the model from "hearing" noise and hallucinating phantom
+      // sentences, while still streaming so end-of-turn is detected.
+      let sum = 0;
+      for (let i = 0; i < input.length; i++) sum += input[i] * input[i];
+      const rms = Math.sqrt(sum / input.length);
       const pcm = downsampleToInt16(input, inRate, AUDIO_INPUT_SAMPLE_RATE);
+      if (rms < SPEECH_RMS_THRESHOLD) pcm.fill(0);
       if (pcm.byteLength > 0) this.onChunk(pcm.buffer as ArrayBuffer);
     };
 
