@@ -85,11 +85,32 @@ class GeminiLiveSession implements TranslationSession {
     });
 
     this.ws.on('message', (data: WebSocket.RawData) => this.handleMessage(data));
-    this.ws.on('error', (err) => this.cb.onError?.(err as Error));
-    this.ws.on('close', () => {
+    this.ws.on('unexpected-response', (_req, res) => {
+      const msg = `gemini http ${res.statusCode} ${res.statusMessage ?? ''}`.trim();
+      console.error('[gemini]', msg);
+      this.cb.onError?.(new Error(msg));
+    });
+    this.ws.on('error', (err) => {
+      console.error('[gemini] ws error:', (err as Error).message);
+      this.cb.onError?.(err as Error);
+    });
+    this.ws.on('close', (code: number, reason: Buffer) => {
       this.closed = true;
+      const r = reason?.toString().slice(0, 160) ?? '';
+      console.error(`[gemini] closed code=${code} reason=${r} ready=${this.ready}`);
+      if (!this.ready && code !== 1000) {
+        this.cb.onError?.(new Error(`gemini closed before ready: ${code} ${r}`));
+      }
       this.cb.onClose?.();
     });
+
+    // Watchdog: report if the Gemini handshake never completes.
+    setTimeout(() => {
+      if (!this.ready && !this.closed) {
+        console.error('[gemini] setup did not complete within 8s');
+        this.cb.onError?.(new Error('gemini setup timeout (no setupComplete in 8s)'));
+      }
+    }, 8000);
   }
 
   private handleMessage(data: WebSocket.RawData): void {
@@ -102,6 +123,7 @@ class GeminiLiveSession implements TranslationSession {
 
     if (msg.setupComplete) {
       this.ready = true;
+      console.log(`[gemini] setupComplete (model=${config.gemini.model}), flushing ${this.queue.length} queued chunks`);
       for (const buf of this.queue) this.pushAudio(buf);
       this.queue = [];
       return;
