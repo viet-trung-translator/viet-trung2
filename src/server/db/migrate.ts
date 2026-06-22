@@ -1,3 +1,4 @@
+import { pathToFileURL } from 'node:url';
 import { pool } from './pool.js';
 
 /**
@@ -36,8 +37,8 @@ export async function migrate(): Promise<void> {
   await pool.query(SCHEMA);
 }
 
-// Allow running directly: `npm run migrate`
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Allow running directly: `npm run migrate` (cross-platform path comparison)
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   migrate()
     .then(() => {
       console.log('[migrate] schema is up to date');
