@@ -82,6 +82,18 @@ class GeminiLiveSession implements TranslationSession {
           systemInstruction: {
             parts: [{ text: buildSystemInstruction(opts) }],
           },
+          // Snappier turn detection: translate almost immediately after a short
+          // pause (~0.4s) instead of waiting for a long silence (~0.8s default),
+          // so it feels near real-time. Mic is still gated client-side while the
+          // translation plays, to avoid echo.
+          realtimeInputConfig: {
+            automaticActivityDetection: {
+              startOfSpeechSensitivity: 'START_SENSITIVITY_HIGH',
+              endOfSpeechSensitivity: 'END_SENSITIVITY_HIGH',
+              prefixPaddingMs: 60,
+              silenceDurationMs: 400,
+            },
+          },
           inputAudioTranscription: {},
           outputAudioTranscription: {},
         },
