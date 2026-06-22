@@ -39,6 +39,9 @@ interface RealtimeCtx {
   stopSolo: () => void;
   clearNotice: () => void;
   stats: SessionStats;
+  /** true = earphone mode: keep mic open during playback (no turn-taking). */
+  fullDuplex: boolean;
+  setFullDuplex: (v: boolean) => void;
 }
 
 export interface SessionStats {
@@ -64,6 +67,16 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   const sentRef = useRef(0);
   const recvRef = useRef(0);
   const [stats, setStats] = useState<SessionStats>({ micOn: false, sent: 0, recv: 0 });
+
+  // Earphone / full-duplex mode (keep mic open while playing).
+  const fullDuplexRef = useRef(localStorage.getItem('along.fullDuplex') === '1');
+  const [fullDuplex, setFullDuplexState] = useState(fullDuplexRef.current);
+  const setFullDuplex = useCallback((v: boolean) => {
+    fullDuplexRef.current = v;
+    setFullDuplexState(v);
+    localStorage.setItem('along.fullDuplex', v ? '1' : '0');
+    audioRef.current?.setHalfDuplex(!v);
+  }, []);
 
   // transcript buffers
   const srcLines = useRef<string[]>([]);
@@ -97,7 +110,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   const primeAudio = useCallback(() => {
     if (!audioRef.current) {
       const engine = new AudioEngine();
-      engine.setHalfDuplex(true);
+      engine.setHalfDuplex(!fullDuplexRef.current);
       audioRef.current = engine;
     }
     audioRef.current.prime();
@@ -106,7 +119,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   const startAudioCapture = useCallback(async () => {
     if (!audioRef.current) {
       const engine = new AudioEngine();
-      engine.setHalfDuplex(true);
+      engine.setHalfDuplex(!fullDuplexRef.current);
       audioRef.current = engine;
     }
     if (audioRef.current.started) return;
@@ -285,6 +298,8 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         stopSolo,
         clearNotice: () => setNotice(null),
         stats,
+        fullDuplex,
+        setFullDuplex,
       }}
     >
       {children}

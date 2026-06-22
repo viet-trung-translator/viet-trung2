@@ -4,7 +4,8 @@ import { useRealtime } from '../realtimeContext';
 /** Full-screen overlay shown during outgoing/incoming/active calls. */
 export default function CallOverlay() {
   const { t } = useAuth();
-  const { call, accept, reject, hangup, transcripts, notice, clearNotice } = useRealtime();
+  const { call, accept, reject, hangup, transcripts, notice, clearNotice, fullDuplex, setFullDuplex } =
+    useRealtime();
 
   if (call.kind === 'idle') {
     return notice ? (
@@ -29,6 +30,16 @@ export default function CallOverlay() {
           {call.kind === 'active' && t('inCall')}
         </div>
       </div>
+
+      {call.kind === 'active' && (
+        <button
+          className={`btn sm ${fullDuplex ? 'green' : 'ghost'}`}
+          style={{ margin: '12px auto 0', display: 'block' }}
+          onClick={() => setFullDuplex(!fullDuplex)}
+        >
+          {fullDuplex ? t('earphoneMode') : t('turnMode')}
+        </button>
+      )}
 
       {call.kind === 'active' && (
         <div className="transcripts">

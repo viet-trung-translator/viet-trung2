@@ -7,7 +7,7 @@ import TopBar from '../components/TopBar';
 export default function Solo() {
   const { t } = useAuth();
   const navigate = useNavigate();
-  const { soloActive, startSolo, stopSolo, transcripts, notice, clearNotice, status, stats } =
+  const { soloActive, startSolo, stopSolo, transcripts, notice, clearNotice, status, stats, fullDuplex, setFullDuplex } =
     useRealtime();
 
   // Stop the session when leaving this screen.
@@ -46,6 +46,15 @@ export default function Solo() {
         </button>
         <p className="hint">{soloActive ? t('tapToStop') : t('tapToStart')}</p>
         <p className="hint">{t('soloHint')}</p>
+
+        <button
+          className={`btn sm ${fullDuplex ? 'green' : 'ghost'}`}
+          style={{ margin: '4px auto', display: 'block' }}
+          onClick={() => setFullDuplex(!fullDuplex)}
+        >
+          {fullDuplex ? t('earphoneMode') : t('turnMode')}
+        </button>
+        <p className="hint">{t('duplexHint')}</p>
 
         {soloActive && (
           <div

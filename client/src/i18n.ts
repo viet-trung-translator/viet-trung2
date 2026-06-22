@@ -46,6 +46,9 @@ const vi: Dict = {
   callEnded: 'Đã kết thúc cuộc gọi',
   speaker: 'Loa ngoài',
   earpiece: 'Loa trong',
+  earphoneMode: '🎧 Tai nghe: nói liên tục',
+  turnMode: '🔊 Loa ngoài: nói theo lượt',
+  duplexHint: 'Bật khi đeo tai nghe (hoặc 2 máy ở xa nhau) để nói liên tục, không bị tắt mic.',
 
   // solo
   soloTitle: 'Dịch 1 máy',
@@ -115,6 +118,9 @@ const zh: Dict = {
   callEnded: '通话已结束',
   speaker: '扬声器',
   earpiece: '听筒',
+  earphoneMode: '🎧 耳机：连续说话',
+  turnMode: '🔊 扬声器：轮流说话',
+  duplexHint: '戴耳机（或两台设备相距较远）时开启，可连续说话，麦克风不会被关闭。',
 
   soloTitle: '单机翻译',
   soloHint:
