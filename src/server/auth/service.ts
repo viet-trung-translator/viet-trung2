@@ -28,7 +28,7 @@ export async function registerUser(
   language: Language,
 ): Promise<UserRow> {
   validateCredentials(username, password);
-  const normalized = username.trim();
+  const normalized = username.trim().toLowerCase();
 
   const existing = await query<UserRow>('SELECT id FROM users WHERE username = $1', [normalized]);
   if (existing.rowCount && existing.rowCount > 0) {
@@ -52,7 +52,7 @@ export async function registerUser(
 }
 
 export async function loginUser(username: string, password: string): Promise<UserRow> {
-  const normalized = username.trim();
+  const normalized = username.trim().toLowerCase();
   const res = await query<UserRow>('SELECT * FROM users WHERE username = $1', [normalized]);
   const user = res.rows[0];
   if (!user) {

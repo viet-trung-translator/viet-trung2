@@ -80,12 +80,25 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     audioRef.current = null;
   }, []);
 
+  // Create + unlock the AudioContext synchronously inside a user gesture
+  // (Call / Accept / Mic tap). iOS requires this or playback stays muted.
+  const primeAudio = useCallback(() => {
+    if (!audioRef.current) {
+      const engine = new AudioEngine();
+      engine.setHalfDuplex(true);
+      audioRef.current = engine;
+    }
+    audioRef.current.prime();
+  }, []);
+
   const startAudioCapture = useCallback(async () => {
-    if (audioRef.current) return;
-    const engine = new AudioEngine();
-    engine.setHalfDuplex(true);
-    audioRef.current = engine;
-    await engine.start((pcm) => clientRef.current?.sendAudio(pcm));
+    if (!audioRef.current) {
+      const engine = new AudioEngine();
+      engine.setHalfDuplex(true);
+      audioRef.current = engine;
+    }
+    if (audioRef.current.started) return;
+    await audioRef.current.start((pcm) => clientRef.current?.sendAudio(pcm));
   }, []);
 
   // Establish the websocket once we have an authenticated user.
@@ -166,16 +179,21 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     };
   }, [user, resetTranscripts, renderTranscripts, startAudioCapture, stopAudio]);
 
-  const invite = useCallback((userId: number) => {
-    clientRef.current?.send({ t: 'call.invite', to: userId });
-  }, []);
+  const invite = useCallback(
+    (userId: number) => {
+      primeAudio(); // unlock audio within this tap (caller's session starts later)
+      clientRef.current?.send({ t: 'call.invite', to: userId });
+    },
+    [primeAudio],
+  );
 
   const accept = useCallback(() => {
+    primeAudio(); // unlock audio within this tap
     setCall((c) => {
       if (c.kind === 'incoming') clientRef.current?.send({ t: 'call.accept', callId: c.callId });
       return c;
     });
-  }, []);
+  }, [primeAudio]);
 
   const reject = useCallback(() => {
     setCall((c) => {
@@ -196,12 +214,12 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   }, [stopAudio]);
 
   const startSolo = useCallback(async () => {
+    primeAudio(); // unlock audio synchronously within the tap (iOS)
     resetTranscripts();
     setSoloActive(true);
-    // Capture begins on session.started, but pre-warm mic permission here.
     await startAudioCapture();
     clientRef.current?.send({ t: 'translate.start', mode: 'solo' });
-  }, [resetTranscripts, startAudioCapture]);
+  }, [resetTranscripts, startAudioCapture, primeAudio]);
 
   const stopSolo = useCallback(() => {
     setSoloActive(false);

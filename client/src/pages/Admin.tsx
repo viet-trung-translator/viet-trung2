@@ -10,6 +10,7 @@ export default function Admin() {
   const navigate = useNavigate();
   const [users, setUsers] = useState<PublicUser[]>([]);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [confirmId, setConfirmId] = useState<number | null>(null);
 
   const load = () => api.listUsers().then((r) => setUsers(r.users)).catch(() => {});
   useEffect(() => {
@@ -93,10 +94,15 @@ export default function Admin() {
                       className="btn sm red"
                       disabled={busyId === u.id}
                       onClick={() => {
-                        if (confirm(t('confirmDelete'))) act(() => api.deleteUser(u.id), u.id);
+                        if (confirmId === u.id) {
+                          setConfirmId(null);
+                          act(() => api.deleteUser(u.id), u.id);
+                        } else {
+                          setConfirmId(u.id);
+                        }
                       }}
                     >
-                      {t('delete')}
+                      {confirmId === u.id ? t('confirmDelete') : t('delete')}
                     </button>
                   </div>
                 )}
