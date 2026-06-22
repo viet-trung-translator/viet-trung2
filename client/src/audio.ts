@@ -16,6 +16,7 @@ export class AudioEngine {
   private stream: MediaStream | null = null;
   private ctx: AudioContext | null = null;
   private processor: ScriptProcessorNode | null = null;
+  private worklet: AudioWorkletNode | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
 
   private playhead = 0;
@@ -49,7 +50,7 @@ export class AudioEngine {
 
   /** True once mic capture has actually started. */
   get started(): boolean {
-    return this.processor !== null;
+    return this.processor !== null || this.worklet !== null;
   }
 
   async start(onChunk: (pcm: ArrayBuffer) => void): Promise<void> {
@@ -68,24 +69,44 @@ export class AudioEngine {
     const ctx = this.ctx!;
     await ctx.resume();
     this.source = ctx.createMediaStreamSource(this.stream);
-    this.processor = ctx.createScriptProcessor(4096, 1, 1);
-
     const inRate = ctx.sampleRate;
-    this.processor.onaudioprocess = (e) => {
+
+    const handleSamples = (input: Float32Array) => {
       if (!this.onChunk) return;
       if (this.gateWhilePlaying && this.isPlaying) return; // half-duplex
-      const input = e.inputBuffer.getChannelData(0);
       const pcm = downsampleToInt16(input, inRate, AUDIO_INPUT_SAMPLE_RATE);
       if (pcm.byteLength > 0) this.onChunk(pcm.buffer as ArrayBuffer);
     };
 
-    // ScriptProcessor must be connected to fire. Route through a muted gain so
-    // the mic is never looped back to the speakers.
+    // Muted sink so the mic is never looped back to the speakers but the
+    // processing node stays in an active graph.
     const sink = ctx.createGain();
     sink.gain.value = 0;
-    this.source.connect(this.processor);
-    this.processor.connect(sink);
     sink.connect(ctx.destination);
+
+    // Prefer AudioWorklet (reliable on iOS). Fall back to ScriptProcessor.
+    let workletReady = false;
+    if (ctx.audioWorklet) {
+      try {
+        await ctx.audioWorklet.addModule('/pcm-worklet.js');
+        const node = new AudioWorkletNode(ctx, 'pcm-processor');
+        node.port.onmessage = (e) => handleSamples(e.data as Float32Array);
+        this.source.connect(node);
+        node.connect(sink);
+        this.worklet = node;
+        workletReady = true;
+      } catch {
+        workletReady = false;
+      }
+    }
+
+    if (!workletReady) {
+      const proc = ctx.createScriptProcessor(4096, 1, 1);
+      proc.onaudioprocess = (e) => handleSamples(e.inputBuffer.getChannelData(0));
+      this.source.connect(proc);
+      proc.connect(sink);
+      this.processor = proc;
+    }
   }
 
   /** Enqueue translated PCM16 audio (mono, 24kHz) for playback. */
@@ -114,6 +135,11 @@ export class AudioEngine {
       this.processor.onaudioprocess = null;
       this.processor.disconnect();
       this.processor = null;
+    }
+    if (this.worklet) {
+      this.worklet.port.onmessage = null;
+      this.worklet.disconnect();
+      this.worklet = null;
     }
     this.source?.disconnect();
     this.source = null;
