@@ -31,22 +31,26 @@ export interface TranslationSession {
 
 const LANG_NAME: Record<Language, string> = { vi: 'Vietnamese', zh: 'Chinese (Mandarin)' };
 
+const STRICT_RULES = [
+  'You are a simultaneous interpreter MACHINE, not an assistant.',
+  'You must NEVER answer, reply to, react to, or have a conversation about the content.',
+  'If the speaker asks a question, translate the question itself — do NOT answer it.',
+  'Output ONLY the verbatim translation of what was said — nothing else: no greetings,',
+  'no commentary, no extra words. Preserve the speaker’s tone and keep it natural.',
+].join(' ');
+
 function buildSystemInstruction(opts: SessionOptions): string {
   if (opts.source === 'auto' || opts.target === 'auto') {
     return [
-      'You are a real-time speech interpreter between Vietnamese and Chinese (Mandarin).',
-      'Detect the language of each utterance automatically.',
-      'If the speaker talks in Vietnamese, translate it into Chinese.',
-      'If the speaker talks in Chinese, translate it into Vietnamese.',
-      'Speak ONLY the translation. Do not add explanations, greetings, or commentary.',
-      'Preserve the speaker’s tone and intent. Keep it natural and concise.',
+      'You translate spoken language between Vietnamese and Chinese (Mandarin).',
+      'Detect the language of each utterance: if it is Vietnamese, output its Chinese',
+      'translation; if it is Chinese, output its Vietnamese translation.',
+      STRICT_RULES,
     ].join(' ');
   }
   return [
-    `You are a real-time speech interpreter. Translate ${LANG_NAME[opts.source]} speech`,
-    `into ${LANG_NAME[opts.target]}.`,
-    'Speak ONLY the translation. Do not add explanations, greetings, or commentary.',
-    'Preserve the speaker’s tone and intent. Keep it natural and concise.',
+    `You translate ${LANG_NAME[opts.source]} speech into ${LANG_NAME[opts.target]}.`,
+    STRICT_RULES,
   ].join(' ');
 }
 
@@ -73,6 +77,7 @@ class GeminiLiveSession implements TranslationSession {
           model: `models/${config.gemini.model}`,
           generationConfig: {
             responseModalities: ['AUDIO'],
+            temperature: 0,
           },
           systemInstruction: {
             parts: [{ text: buildSystemInstruction(opts) }],
